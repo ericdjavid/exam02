@@ -53,7 +53,7 @@ int process_d(int d)
         write(1, "-", 1);
         ret += 1;
     }
-    ret = ft_putstr(str);
+    ret += ft_putstr(str);
     free(str);
     return (ret);
 }
