@@ -113,6 +113,7 @@ int ft_printf(char *str, ...)
             {
                 write(1, "%", 1);
                 i++;
+                ret++;
                 continue;
             }
             i++;
