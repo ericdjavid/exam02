@@ -1,125 +1,136 @@
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <time.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-//#define BUFFER_SIZE 1
-
-#define $END_LINE '\n'
-#define $END '\0'
-
-int ft_strlen_c(char *str, char c)
+#include "get_next_line.h"
+size_t ft_strlen(char *str)
 {
-    int i = 0;
+    size_t i = 0;
     if (!str)
-        return (-1);
-    if (c == $END)
-    {
-        while (str[i])
-            i++;
-        return (i);
-    }
+        return (0);
+    while (str[i])
+        i++;
+    return (i);
+}
+char *ft_strchr(char *str, int c)
+{
+    size_t i = 0;
+    if (!str)
+        return (NULL);
     while (str[i])
     {
         if (str[i] == c)
-            return (i);
+            return (&str[i]);
         i++;
     }
-    return (-1);
+    if (str[i] == c)
+        return (&str[i]);
+    return (NULL);
 }
-
-char *ft_strdup(char *str, int n)
+char *ft_strjoin(char *s1, char *s2)
 {
-    int i = 0;
-    if (!str)
-        return 0;
-    while (str[i] && i < n)
-        i++;
-    char *tmp;
-    tmp = malloc(sizeof(char) * i + 1);
-    if (!tmp)
+    char *ret;
+    size_t i = 0, e = 0;
+    if (!s1)
+    {
+        s1 = malloc(1);
+        if (!s1)
+            return (NULL);
+        s1[0] = '\0';
+    }
+    if (!s2)
         return (NULL);
-    i = 0;
-    while (str[i] && i < n)
+    ret = malloc(ft_strlen(s1) + ft_strlen(s2) + 1);
+    if (!ret)
+        return (NULL);
+    while (s1[i])
     {
-        tmp[i] = str[i];
+        ret[i] = s1[i];
         i++;
     }
-    tmp[i] = $END;
-    return tmp;
+    while (s2[e])
+    {
+        ret[i] = s2[e];
+        e++;
+        i++;
+    }
+    ret[i] = '\0';
+    free(s1);
+    return (ret);
+}
+char *ft_read(int fd, char *stat)
+{
+    int ret = 1;
+    char buf[BUFFER_SIZE + 1];
+    while (ret != 0 && !ft_strchr(stat, '\n'))
+    {
+        ret = read(fd, buf, BUFFER_SIZE);
+        if (ret == -1)
+            return (NULL);
+        buf[ret] = '\0';
+        stat = ft_strjoin(stat, buf);
+    }
+    return (stat);
 }
 
-char *ft_join(char *str1, char *str2)
+char *get_line(char *stat)
 {
-    if (!str1 || !str2)
-        return (0);
-    char *tmp;
-
-    int size = ft_strlen_c(str1, 0) + ft_strlen_c(str2, 0) + 1;
-    tmp = malloc(sizeof(char) * size);
-    int i = 0;
-    int j = 0;
-    while (str1[i])
+    char *ret;
+    size_t i = 0;
+    if (!stat[0])
+        return (NULL);
+    ret = malloc(ft_strlen(stat) + 2);
+    if (!ret)
+        return (NULL);
+    while (stat[i] && stat[i] != '\n')
     {
-        tmp[i] = str1[i];
+        ret[i] = stat[i];
         i++;
     }
-    free(str1);
-    while (str2[j])
+    if (stat[i] == '\n')
     {
-        tmp[i] = str2[j];
-        j++;
+        ret[i] = '\n';
         i++;
     }
-    tmp[i] = '\0';
-    return (tmp);
+    ret[i] = '\0';
+    return (ret);
 }
 
-char *get_return(char **delta)
+char *ft_stat(char *stat)
 {
-    char *temp;
-    char *line;
-    const int pos = ft_strlen_c(*delta, $END_LINE);
-    line = NULL;
-    if (pos != -1)
+    size_t i = 0, e = 0;
+    char *ret;
+    while (stat[i] && stat[i] != '\n')
+        i++;
+    if (!stat[i]) //si le buffer se finit sans qu'il y ait de '\n'
     {
-        line = ft_strdup(*delta, pos + 1);
-        temp = *delta;
-        *delta = ft_strdup(*delta + pos + 1, ft_strlen_c(*delta + pos + 1, $END));
-        free(temp);
+        free(stat);
+        return (NULL);
     }
-    else if (*delta)
+    //tu retournes la différence entre le \n et la fin du buffer dans static
+    ret = malloc(ft_strlen(stat) - i + 1);
+    if (!ret)
+        return (NULL);
+    i++;
+    while (stat[i])
     {
-        line = ft_strdup(*delta,
-                         ft_strlen_c(*delta, '\0'));
-        free(*delta);
-        *delta = NULL;
+        ret[e] = stat[i];
+        i++;
+        e++;
     }
-    return (line);
+    ret[e] = '\0';
+    free(stat);
+    return (ret);
 }
 
 char *get_next_line(int fd)
 {
-    static char *delta;
-    char buff[BUFFER_SIZE + 1];
-    int ret = 0;
-
-    while (ft_strlen_c(delta, $END_LINE) == -1)
-    {
-        ret = read(fd, buff, BUFFER_SIZE);
-        if (ret <= 0)
-            break;
-        buff[ret] = $END;
-        if (!delta)
-            delta = ft_strdup(buff,
-                              ft_strlen_c(buff, '\0'));
-        else
-            delta = ft_join(delta, buff);
-    }
-    return (get_return(&delta));
+    char *line;
+    static char *stat;
+    if (BUFFER_SIZE < 1 || fd < 0)
+        return (NULL);
+    stat = ft_read(fd, stat);
+    if (!stat)
+        return (NULL);
+    line = get_line(stat);
+    stat = ft_stat(stat);
+    return (line);
 }
 
 int main(int argc, char **argv)
@@ -141,6 +152,6 @@ int main(int argc, char **argv)
         printf("%s", line);
         free(line);
     }
-    // close(fd);
+    close(fd);
     return (0);
 }
